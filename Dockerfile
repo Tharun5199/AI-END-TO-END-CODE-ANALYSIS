@@ -14,17 +14,15 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Dependencies first (cached layer). The extra index makes pip pick the
-# CPU-only PyTorch wheel -- several GB smaller than the default CUDA build.
+# Dependencies first (cached layer). No PyTorch -- uses ONNX for embeddings.
+# This keeps the image under 500MB, fitting Render's free tier.
 COPY requirements.txt .
-RUN pip install --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
+RUN pip install -r requirements.txt
 
-# Bake the embedding model into the image, so containers start ready and
-# never need to reach huggingface.co at runtime.
-ARG EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
-ENV EMBEDDING_MODEL=${EMBEDDING_MODEL}
-RUN python -c "from sentence_transformers import SentenceTransformer as S; S('${EMBEDDING_MODEL}', device='cpu')"
-ENV HF_HUB_OFFLINE=1
+# Bake the ONNX embedding model into the image (Chroma's built-in all-MiniLM-L6-v2).
+# Downloads ~80 MB once during build, never needed at runtime.
+ENV EMBEDDING_THREADS=1 PRELOAD_EMBEDDINGS=true
+RUN python -c "from codeanalyzer.embeddings.embedding_manager import get_embedding_model; get_embedding_model()"
 
 COPY . .
 RUN pip install -e .
