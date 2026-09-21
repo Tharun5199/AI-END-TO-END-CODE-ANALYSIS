@@ -18,6 +18,10 @@ import sys
 import threading
 from pathlib import Path
 
+if __name__ == "__main__":
+    print("Starting AutoCode Analyzer -- loading AI libraries. The first start after a reboot can take\n"
+          "1-2 minutes on Windows; it is NOT frozen. Wait for 'Running on http://127.0.0.1:8080'.", flush=True)
+
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 from flask import Flask, jsonify, render_template, request  # noqa: E402

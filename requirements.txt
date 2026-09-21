@@ -11,10 +11,9 @@ langchain==1.4.2
 langchain-core==1.6.3
 langchain-text-splitters==1.1.2
 langchain-groq==1.1.3          # free-tier LLM (Groq)
-langchain-huggingface==1.2.2   # local, free embeddings
 langchain-chroma==1.1.0        # vector store
-chromadb==1.5.9
-sentence-transformers==6.1.0
-torch==2.14.0                  # pulled in by sentence-transformers; see Dockerfile for the CPU-only build
+chromadb==1.5.9                # also provides the local ONNX all-MiniLM-L6-v2 embedding model
 
-# -e . also installs this project's own `codeanalyzer` package (see setup.py)
+# No PyTorch / sentence-transformers on purpose: embeddings run on onnxruntime
+# (installed with chromadb), which keeps the app under ~512 MB RAM so it fits
+# free hosting tiers.

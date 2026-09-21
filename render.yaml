@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: autocode-analyzer
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    buildCommand: "true"
+    startCommand: "gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 600 app:app"
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      - key: EMBEDDING_THREADS
+        value: "1"
+      - key: PRELOAD_EMBEDDINGS
+        value: "true"

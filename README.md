@@ -7,9 +7,9 @@ language questions about what the code does -- citing the exact files it used.
 Built end-to-end: local RAG pipeline -> Flask web app -> Docker container ->
 CI/CD pipeline -> AWS deployment (ECR + EC2).
 
-Runs entirely on free tiers: a local sentence-transformers model for
-embeddings, and Groq's free API tier for the LLM. No OpenAI key, no paid
-vector database.
+Runs entirely on free tiers: local ONNX embeddings (no PyTorch needed) and 
+Groq's free API tier for the LLM. No OpenAI key, no paid vector database. 
+Fits Render's free tier (512 MB container).
 
 ## How it works
 
@@ -28,7 +28,7 @@ vector database.
      Java, Go, ...), numbered per file
      |
      v
- [4] Embed chunks locally (sentence-transformers, CPU, free)
+ [4] Embed chunks locally (ONNX all-MiniLM-L6-v2, CPU, free, ~80 MB)
      |
      v
  [5] Store in a Chroma collection (one per repo, rebuilt cleanly on re-analysis)
@@ -49,13 +49,13 @@ step is easy to read and swap out.
 | Language       | Python 3.10+ (tested on 3.11 and 3.12)                     |
 | RAG framework  | LangChain / LangChain Expression Language (LCEL)           |
 | LLM            | Groq API (`openai/gpt-oss-120b`) -- free tier               |
-| Embeddings     | `sentence-transformers/all-MiniLM-L6-v2` -- local, free      |
+| Embeddings     | ONNX `all-MiniLM-L6-v2` (Chroma) -- local, no PyTorch (~80 MB)   |
 | Vector store   | Chroma (embedded, on-disk)                                  |
 | Repo access    | GitPython                                                    |
 | Web app        | Flask + vanilla JS chat UI (safe Markdown rendering)          |
 | Tests          | pytest -- mock Groq server + fake embeddings, no key needed   |
-| Container      | Docker (CPU-only, embedding model baked in)                    |
-| CI/CD          | GitHub Actions -> AWS ECR -> self-hosted runner on EC2         |
+| Container      | Docker (CPU-only, ONNX embedded model baked in, ~500 MB)       |
+| CI/CD          | GitHub Actions -> AWS ECR -> self-hosted runner on EC2 or Render  |
 
 ## Project structure
 
@@ -132,8 +132,8 @@ python app.py
 ```
 
 Open <http://localhost:8080>, paste a public GitHub repo URL, click
-**Analyze repo**, then ask questions. The first run downloads the ~90MB
-embedding model once; it's cached afterwards. If the key isn't configured, a
+**Analyze repo**, then ask questions. The first run downloads the ~80 MB
+ONNX embedding model once; it's cached afterwards. If the key isn't configured, a
 yellow banner at the top of the page says exactly what's wrong.
 
 ### Notebook walkthrough
@@ -164,7 +164,7 @@ the "Troubleshooting" section below.
 | `destination path ... already exists and is not an empty directory` | Fixed: git marks files read-only and Windows refused to delete them. Pull the latest code. |
 | Answers repeat the same file 5 times | Fixed: re-analyzing a repo used to append duplicate chunks. Pull the latest code; the next analysis rebuilds the index cleanly. |
 | `repository doesn't exist or is private` | Only public repos can be analyzed. Check the URL. |
-| First "Analyze" is slow | The embedding model downloads once (~90MB). Later runs are fast. |
+| First "Analyze" is slow | The ONNX embedding model downloads once (~80 MB). Later runs are fast. |
 
 ## Running in Docker
 
@@ -173,10 +173,42 @@ docker build -t autocode-analyzer .
 docker run -p 8080:8080 -e GROQ_API_KEY=gsk_your_key autocode-analyzer
 ```
 
-The image uses CPU-only PyTorch and has the embedding model baked in, so the
-container never needs to download it. It runs gunicorn with **one** worker
-process and 4 threads on purpose: the analyzed repo lives in that process's
-memory, and multiple worker processes would each have their own copy.
+The image uses local ONNX embeddings (no PyTorch) and has the embedding model 
+baked in, so the container never needs to download it. Total image size: 
+**~500 MB**, fits free-tier containers (Render, Railway, etc.). It runs gunicorn 
+with **one** worker process and 4 threads on purpose: the analyzed repo lives 
+in that process's memory, and multiple worker processes would each have their own copy.
+
+## Free hosting on Render
+
+Render's **free tier** includes:
+- **512 MB RAM** + **0.1 vCPU** (CPU-only embeddings fit easily)
+- **Deploys from GitHub** (push = instant redeploy)
+- **Automatic redeploys** when you push to `main`
+- **750 free instance hours/month** (~1 persistent instance)
+- No credit card required
+- Auto-spins down after 15 min inactivity (re-spins up when traffic returns, ~30s)
+
+### Deploy to Render in 3 steps
+
+1. **Fork this repo** to your GitHub account.
+
+2. **Sign up** at <https://render.com> (free, no card needed).
+
+3. **New Web Service**:
+   - **Repository**: select this repo
+   - **Build command**: `pip install -r requirements.txt && pip install -e .`
+   - **Start command**: provided by `render.yaml` (auto-detected)
+   - **Environment variables**:
+     - `GROQ_API_KEY`: your key from <https://console.groq.com/keys>
+     - `FLASK_SECRET_KEY`: a random string (Render can generate one)
+
+The `render.yaml` blueprint is included in the repo and auto-configures 
+everything (health check, threading, timeouts, Singapore region for speed).
+
+**First deploy** takes ~3 min (builds the image, downloads the ONNX model). 
+Later deploys cache the model and take ~30 sec. The **first API question** 
+wakes the instance (~30s). Subsequent questions are instant.
 
 ## CI/CD pipeline
 

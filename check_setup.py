@@ -41,9 +41,12 @@ def check_python() -> None:
 
 
 def check_packages() -> bool:
+    print("       Loading AI libraries (ONNX embeddings, no torch). The first run after a reboot can take")
+    print("       30-60 seconds on Windows -- it is NOT frozen, please don't press Ctrl+C.", flush=True)
     missing = []
-    for module in ("flask", "git", "langchain_core", "langchain_groq", "langchain_huggingface",
-                   "langchain_chroma", "langchain_text_splitters", "chromadb", "sentence_transformers", "dotenv"):
+    for module in ("flask", "git", "langchain_core", "langchain_groq", "langchain_chroma",
+                   "langchain_text_splitters", "chromadb", "onnxruntime", "tokenizers", "dotenv"):
+        print(f"       ... {module}", flush=True)
         try:
             __import__(module)
         except Exception as exc:  # noqa: BLE001
