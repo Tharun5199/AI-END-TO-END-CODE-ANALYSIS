@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoCode Analyzer</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%236d8bff'/%3E%3Ctext x='16' y='22' font-size='15' font-family='monospace' font-weight='700' text-anchor='middle' fill='%230b0d11'%3E%7B%7D%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="app">
+  <header class="app-header">
+    <h1>AutoCode&nbsp;Analyzer</h1>
+    <p class="subtitle">Point it at a public GitHub repo, then ask it anything about the code.</p>
+  </header>
+
+  <div id="configBanner" class="banner" hidden></div>
+
+  <section class="repo-panel">
+    <input id="repoUrl" type="text" placeholder="https://github.com/owner/repo" autocomplete="off" spellcheck="false">
+    <button id="analyzeBtn" type="button">Analyze repo</button>
+    <div id="repoStatus" class="repo-status" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="chat-panel" id="chatPanel" hidden>
+    <div class="chat-header" id="chatHeader"></div>
+    <div id="chatLog" class="chat-log" aria-live="polite"></div>
+    <form id="chatForm" class="chat-form">
+      <input id="chatInput" type="text" placeholder="Ask a question about this codebase..." autocomplete="off" disabled>
+      <button type="submit" id="sendBtn" disabled>Send</button>
+    </form>
+  </section>
+</div>
+
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

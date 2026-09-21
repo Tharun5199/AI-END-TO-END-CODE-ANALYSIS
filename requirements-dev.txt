@@ -1,0 +1,2 @@
+# Only needed to run the test-suite (python -m pytest -q)
+pytest==9.1.1
